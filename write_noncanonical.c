@@ -21,6 +21,22 @@
 
 #define BUF_SIZE 256
 
+//<----------HEADERS---------->
+
+//END & START FLAG
+#define F 0x7E
+
+//ADRESS FIELD
+// --A_W is for commands sent by the writer and responses sent by the Reader.
+#define A_W 0x03
+// --A_R is for commands sent by the Reader and responses sent by the Writer.
+#define A_R 0x01
+
+//CONTROL FIELD
+#define SET 0x03
+#define DISC 0x0B
+#define UA 0x07
+
 volatile int STOP = FALSE;
 
 int main(int argc, char *argv[])
