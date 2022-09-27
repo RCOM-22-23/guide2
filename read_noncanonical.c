@@ -1,4 +1,4 @@
-// Write to serial port in non-canonical mode
+// Read from serial port in non-canonical mode
 //
 // Modified by: Eduardo Nuno Almeida [enalmeida@fe.up.pt]
 
@@ -19,10 +19,9 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // Open serial port device for reading and writing, and not as controlling tty
+    // Open serial port device for reading and writing and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
     int fd = open(serialPortName, O_RDWR | O_NOCTTY);
-
     if (fd < 0)
     {
         perror(serialPortName);
@@ -70,14 +69,32 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    // Create char array to send
+    //Expected set format
     unsigned char set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
+    //Space for received set
+    unsigned char received_set[CONTROL_FRAME_SIZE] = {0};
+    //small buffer for reading from serial port
+    unsigned char buf[2];
 
-    int bytes = write(fd, set, CONTROL_FRAME_SIZE);
-    printf("%d bytes written\n", bytes);
+    int i = 0;
 
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
+    while (i < 5)
+    {
+        int bytes = read(fd, buf, 1);
+        received_set[i] = buf[0];
+        i++;
+    }
+
+    for(int k = 0; k < 5; k++){
+        printf("%x ",received_set[k]);
+    }
+
+    if(received_set[3] == set[3]){
+        printf("SET RECEIVED\n");
+    }
+    else{
+        printf("SET NOT RECEIVED\n");
+    }
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
@@ -87,10 +104,6 @@ int main(int argc, char *argv[])
     }
 
     close(fd);
-
-    /*
-    
-*/
 
     return 0;
 }
