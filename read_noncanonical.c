@@ -12,17 +12,61 @@ int check_state(unsigned char read_char,unsigned char wanted_char, int new_state
     return FALSE;
 }
 
+//State machine for reading set messages.
+void read_SET(int fd){
+    //small buffer for reading from serial port
+    unsigned char buf[2];
+
+    int state = START;
+    while(state != STOP){
+        int flag = 0;
+        int bytes = read(fd, buf, 1);
+        unsigned char read_char = buf[0];
+        if(bytes != 0){
+            switch(state){
+                case START:
+                    flag = check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case FLAG_RCV:
+                    flag = check_state(read_char,A_W,A_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case A_RCV:
+                    flag = check_state(read_char,SET,C_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case C_RCV:
+                    flag = check_state(read_char,BCC1_SET,BCC_OK,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case BCC_OK:
+                    flag = check_state(read_char,F,STOP,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                default:
+                    break;
+            }
+        } 
+    }
+}
+
+void send_UA(int fd){
+    write(fd, ua, CONTROL_FRAME_SIZE);
+    printf("Sent UA to writer\n");
+    // Wait until all bytes have been written to the serial port
+    sleep(1);
+}
+
 int main(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2
     const char *serialPortName = argv[1];
-    //Expected set format
-    unsigned char expected_set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
-    //Space for received set
-    unsigned char received_set[CONTROL_FRAME_SIZE] = {0};
-    //small buffer for reading from serial port
-    unsigned char buf[2];
-
 
     if (argc < 2)
     {
@@ -84,44 +128,16 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    //State machine for reading set messages.
-    int state = START;
-    while(state != STOP){
-        int flag = 0;
-        int bytes = read(fd, buf, 1);
-        unsigned char read_char = buf[0];
-        switch(state){
-            case START:
-                flag = check_state(read_char,F,FLAG_RCV,&state);
-                if(flag == FALSE)
-                    state = START;
-                break;
-            case FLAG_RCV:
-                flag = check_state(read_char,A_W,A_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                if(flag == FALSE)
-                    state = START;
-                break;
-            case A_RCV:
-                flag = check_state(read_char,SET,C_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                if(flag == FALSE)
-                    state = START;
-                break;
-            case C_RCV:
-                flag = check_state(read_char,BCC1_W,BCC_OK,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                if(flag == FALSE)
-                    state = START;
-                break;
-            case BCC_OK:
-                flag = check_state(read_char,F,STOP,&state);
-                if(flag == FALSE)
-                    state = START;
-                break;
-            default:
-                break;
-        }
-    }
 
-    printf("Set read correctly\n");
+    //<-----------Serial Port Settings over----------->
+
+
+
+    read_SET(fd);
+    printf("Established Connection with writer\n");
+
+    send_UA(fd);
+
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)

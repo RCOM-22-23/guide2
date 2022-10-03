@@ -21,6 +21,7 @@ volatile int STOP = FALSE;
 
 //<----------SERIAL PORT CONFIG END---------->
 
+
 //<----------FRAMES---------->
 
 #define CONTROL_FRAME_SIZE 5
@@ -39,8 +40,8 @@ volatile int STOP = FALSE;
 #define DISC 0x0B
 #define UA 0x07
 
-#define BCC1_W A_W^SET
-#define BCC1_R A_R^SET
+#define BCC1_SET A_W^SET
+#define BCC1_UA A_R^UA
 
 //<----------FRAMES END---------->
 
@@ -57,3 +58,15 @@ volatile int STOP = FALSE;
 #define BUF_SIZE 256
 
 //<----------OTHER END---------->
+
+
+//<----------GLOBAL VARIABLES---------->
+
+//SET format
+unsigned char set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_SET,F};
+
+//UA format
+unsigned char ua[CONTROL_FRAME_SIZE] = {F,A_R,UA,BCC1_UA,F};
+
+
+//<----------GLOBAL VARIABLES END---------->

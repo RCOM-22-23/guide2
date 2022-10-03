@@ -4,6 +4,65 @@
 
 #include "headers.h"
 
+
+int check_state(unsigned char read_char,unsigned char wanted_char, int new_state, int *current_state){
+    if(read_char == wanted_char){
+        *current_state = new_state;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+void send_SET(int fd){
+    write(fd, set, CONTROL_FRAME_SIZE);
+    printf("SET sent to receiver \n");
+    // Wait until all bytes have been written to the serial port
+    sleep(1);
+}
+
+void receive_UA(int fd){
+    //small buffer for reading from serial port
+    unsigned char buf[2];
+
+    int state = START;
+    while(state != STOP){
+        int flag = 0;
+        int bytes = read(fd, buf, 1);
+        unsigned char read_char = buf[0];
+        if(bytes != 0){
+            switch(state){
+                case START:
+                    flag = check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case FLAG_RCV:
+                    flag = check_state(read_char,A_R,A_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case A_RCV:
+                    flag = check_state(read_char,UA,C_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case C_RCV:
+                    flag = check_state(read_char,BCC1_UA,BCC_OK,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                case BCC_OK:
+                    flag = check_state(read_char,F,STOP,&state);
+                    if(flag == FALSE)
+                        state = START;
+                    break;
+                default:
+                    break;
+            }
+        } 
+    }
+}
+
 int main(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2
@@ -70,14 +129,13 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    // Create char array to send
-    unsigned char set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
+    //Serial port settings over
 
-    int bytes = write(fd, set, CONTROL_FRAME_SIZE);
-    printf("%d bytes written\n", bytes);
+    send_SET(fd);
 
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
+    receive_UA(fd);
+
+    printf("Established Connection with reader\n");
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
@@ -87,10 +145,6 @@ int main(int argc, char *argv[])
     }
 
     close(fd);
-
-    /*
-    
-*/
 
     return 0;
 }
