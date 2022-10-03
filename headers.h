@@ -44,6 +44,14 @@ volatile int STOP = FALSE;
 
 //<----------FRAMES END---------->
 
+//<----------STATES---------->
+#define START 1
+#define FLAG_RCV 2
+#define A_RCV 3
+#define C_RCV 4
+#define BCC_OK 5
+#define STOP 6
+
 //<----------OTHER---------->
 
 #define BUF_SIZE 256

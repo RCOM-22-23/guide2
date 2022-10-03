@@ -4,6 +4,13 @@
 
 #include "headers.h"
 
+int check_state(unsigned char read_char,unsigned char wanted_char, int new_state, int current_state){
+    if(read_char == wanted_char){
+        current_state = new_state;
+    }
+    return current_state;
+}
+
 int main(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2
@@ -70,7 +77,7 @@ int main(int argc, char *argv[])
     printf("New termios structure set\n");
 
     //Expected set format
-    unsigned char set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
+    unsigned char expected_set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
     //Space for received set
     unsigned char received_set[CONTROL_FRAME_SIZE] = {0};
     //small buffer for reading from serial port
@@ -78,9 +85,30 @@ int main(int argc, char *argv[])
 
     int i = 0;
 
+    //State machine for reading set messages.
+    int state = START;
+    while(state != STOP){
+        int bytes = read(fd, buf, 1);
+        unsigned char read_char = buf[0];
+        switch(state){
+            case START:
+                check_state(read_char,F,FLAG_RCV,START)
+                break;
+            case FLAG_RCV:
+                break;
+            case A_RCV:
+                break;
+            case C_RCV:
+                break;
+            case BCC_OK:
+                break;
+            default:
+                break;
+        }
+    }
+
     while (i < 5)
     {
-        int bytes = read(fd, buf, 1);
         received_set[i] = buf[0];
         i++;
     }
