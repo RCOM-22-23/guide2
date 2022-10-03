@@ -4,17 +4,25 @@
 
 #include "headers.h"
 
-int check_state(unsigned char read_char,unsigned char wanted_char, int new_state, int current_state){
+int check_state(unsigned char read_char,unsigned char wanted_char, int new_state, int *current_state){
     if(read_char == wanted_char){
-        current_state = new_state;
+        *current_state = new_state;
+        return TRUE;
     }
-    return current_state;
+    return FALSE;
 }
 
 int main(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2
     const char *serialPortName = argv[1];
+    //Expected set format
+    unsigned char expected_set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
+    //Space for received set
+    unsigned char received_set[CONTROL_FRAME_SIZE] = {0};
+    //small buffer for reading from serial port
+    unsigned char buf[2];
+
 
     if (argc < 2)
     {
@@ -76,53 +84,44 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    //Expected set format
-    unsigned char expected_set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_W,F};
-    //Space for received set
-    unsigned char received_set[CONTROL_FRAME_SIZE] = {0};
-    //small buffer for reading from serial port
-    unsigned char buf[2];
-
-    int i = 0;
-
     //State machine for reading set messages.
     int state = START;
     while(state != STOP){
+        int flag = 0;
         int bytes = read(fd, buf, 1);
         unsigned char read_char = buf[0];
         switch(state){
             case START:
-                check_state(read_char,F,FLAG_RCV,START)
+                flag = check_state(read_char,F,FLAG_RCV,&state);
+                if(flag == FALSE)
+                    state = START;
                 break;
             case FLAG_RCV:
+                flag = check_state(read_char,A_W,A_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                if(flag == FALSE)
+                    state = START;
                 break;
             case A_RCV:
+                flag = check_state(read_char,SET,C_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                if(flag == FALSE)
+                    state = START;
                 break;
             case C_RCV:
+                flag = check_state(read_char,BCC1_W,BCC_OK,&state) + check_state(read_char,F,FLAG_RCV,&state);
+                if(flag == FALSE)
+                    state = START;
                 break;
             case BCC_OK:
+                flag = check_state(read_char,F,STOP,&state);
+                if(flag == FALSE)
+                    state = START;
                 break;
             default:
                 break;
         }
     }
 
-    while (i < 5)
-    {
-        received_set[i] = buf[0];
-        i++;
-    }
-
-    for(int k = 0; k < 5; k++){
-        printf("%x ",received_set[k]);
-    }
-
-    if(received_set[3] == set[3]){
-        printf("SET RECEIVED\n");
-    }
-    else{
-        printf("SET NOT RECEIVED\n");
-    }
+    printf("Set read correctly\n");
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
