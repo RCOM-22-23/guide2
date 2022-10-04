@@ -24,34 +24,28 @@ int receive_UA(){
 
     int state = START;
     while(state != STOP){
-        int flag = 0;
         int bytes = read(fd, buf, 1);
         unsigned char read_char = buf[0];
         if(bytes != 0){
             switch(state){
                 case START:
-                    flag = check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!check_state(read_char,F,FLAG_RCV,&state))
                         state = START;
                     break;
                 case FLAG_RCV:
-                    flag = check_state(read_char,A_R,A_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!(check_state(read_char,A_R,A_RCV,&state) || check_state(read_char,F,FLAG_RCV,&state)))
                         state = START;
                     break;
                 case A_RCV:
-                    flag = check_state(read_char,UA,C_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!(check_state(read_char,UA,C_RCV,&state) || check_state(read_char,F,FLAG_RCV,&state)))
                         state = START;
                     break;
                 case C_RCV:
-                    flag = check_state(read_char,BCC1_UA,BCC_OK,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!(check_state(read_char,BCC1_UA,BCC_OK,&state) || check_state(read_char,F,FLAG_RCV,&state)))
                         state = START;
                     break;
                 case BCC_OK:
-                    flag = check_state(read_char,F,STOP,&state);
-                    if(flag == FALSE)
+                    if(!check_state(read_char,F,STOP,&state))
                         state = START;
                     break;
                 default:

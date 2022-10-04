@@ -27,7 +27,6 @@ int read_SET(){
 
     int state = START;
     while(state != STOP && alarmCount < attempts){
-        int flag = 0;
         int bytes = read(fd, buf, 1);
         unsigned char read_char = buf[0];
         if (alarmEnabled == FALSE) {
@@ -37,30 +36,27 @@ int read_SET(){
         if(bytes != 0){
             switch(state){
                 case START:
-                    flag = check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!check_state(read_char,F,FLAG_RCV,&state))
                         state = START;
                     break;
                 case FLAG_RCV:
-                    flag = check_state(read_char,A_W,A_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!(check_state(read_char,A_W,A_RCV,&state) || check_state(read_char,F,FLAG_RCV,&state)))
                         state = START;
                     break;
                 case A_RCV:
-                    flag = check_state(read_char,SET,C_RCV,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!(check_state(read_char,SET,C_RCV,&state) || check_state(read_char,F,FLAG_RCV,&state)))
                         state = START;
                     break;
                 case C_RCV:
-                    flag = check_state(read_char,BCC1_SET,BCC_OK,&state) + check_state(read_char,F,FLAG_RCV,&state);
-                    if(flag == FALSE)
+                    if(!(check_state(read_char,BCC1_SET,BCC_OK,&state) || check_state(read_char,F,FLAG_RCV,&state)))
                         state = START;
                     break;
                 case BCC_OK:
-                    flag = check_state(read_char,F,STOP,&state);
-                    set_received = TRUE;
-                    if(flag == FALSE)
+                    if(!check_state(read_char,F,STOP,&state))
                         state = START;
+                    else{
+                        set_received = TRUE;
+                    }
                     break;
                 default:
                     break;
