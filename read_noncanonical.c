@@ -12,16 +12,28 @@ int check_state(unsigned char read_char,unsigned char wanted_char, int new_state
     return FALSE;
 }
 
+void attempt_readSet(int signal){
+    alarmEnabled = FALSE;
+    alarmCount++;
+    printf("Connection Failed, retrying (%d/%d)\n",alarmCount,attempts);
+}
+
 //State machine for reading set messages.
-void read_SET(){
+int read_SET(){
     //small buffer for reading from serial port
     unsigned char buf[2];
+    // Set alarm function handler
+    (void)signal(SIGALRM, attempt_readSet);
 
     int state = START;
-    while(state != STOP){
+    while(state != STOP && alarmCount < attempts){
         int flag = 0;
         int bytes = read(fd, buf, 1);
         unsigned char read_char = buf[0];
+        if (alarmEnabled == FALSE) {
+                alarm(timeout_value); // Set alarm to be triggered in 3s
+                alarmEnabled = TRUE;
+        } 
         if(bytes != 0){
             switch(state){
                 case START:
@@ -46,21 +58,34 @@ void read_SET(){
                     break;
                 case BCC_OK:
                     flag = check_state(read_char,F,STOP,&state);
+                    set_received = TRUE;
                     if(flag == FALSE)
                         state = START;
                     break;
                 default:
                     break;
             }
-        } 
+        }      
     }
+
+    return set_received;
 }
 
 void send_UA(){
     write(fd, ua, CONTROL_FRAME_SIZE);
     printf("Sent UA to writer\n");
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
+}
+
+void llopen_reader(){
+    if(read_SET() == TRUE){
+        printf("Established Connection with writer\n");
+        send_UA();
+    }
+    else{
+        printf("Could not establish connection with writer, closing application\n");
+        exit(-1);
+    }
+   
 }
 
 int main(int argc, char *argv[])
@@ -107,7 +132,7 @@ int main(int argc, char *argv[])
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -133,11 +158,7 @@ int main(int argc, char *argv[])
 
 
 
-    read_SET();
-    printf("Established Connection with writer\n");
-
-    send_UA();
-
+    llopen_reader();
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)

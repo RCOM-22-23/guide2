@@ -76,6 +76,7 @@ int fd;
 int alarmEnabled = FALSE;
 int alarmCount = 0;
 int ua_received = FALSE;
+int set_received = FALSE;
 
 //Change this value for the time waited between each attempt
 int timeout_value = 3;

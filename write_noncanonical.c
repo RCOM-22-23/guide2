@@ -91,7 +91,7 @@ void llopen_write(){
     // Set alarm function handler
     (void)signal(SIGALRM, connectionAttempt);
 
-    while (alarmCount < 3 && ua_received == FALSE)
+    while (alarmCount < attempts && ua_received == FALSE)
     {
         if (alarmEnabled == FALSE)
         {
