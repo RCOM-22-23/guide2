@@ -13,7 +13,7 @@ int check_state(unsigned char read_char,unsigned char wanted_char, int new_state
 }
 
 //State machine for reading set messages.
-void read_SET(int fd){
+void read_SET(){
     //small buffer for reading from serial port
     unsigned char buf[2];
 
@@ -56,7 +56,7 @@ void read_SET(int fd){
     }
 }
 
-void send_UA(int fd){
+void send_UA(){
     write(fd, ua, CONTROL_FRAME_SIZE);
     printf("Sent UA to writer\n");
     // Wait until all bytes have been written to the serial port
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 
     // Open serial port device for reading and writing and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
-    int fd = open(serialPortName, O_RDWR | O_NOCTTY);
+    fd = open(serialPortName, O_RDWR | O_NOCTTY);
     if (fd < 0)
     {
         perror(serialPortName);
@@ -133,10 +133,10 @@ int main(int argc, char *argv[])
 
 
 
-    read_SET(fd);
+    read_SET();
     printf("Established Connection with writer\n");
 
-    send_UA(fd);
+    send_UA();
 
 
     // Restore the old port settings

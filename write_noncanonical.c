@@ -13,14 +13,12 @@ int check_state(unsigned char read_char,unsigned char wanted_char, int new_state
     return FALSE;
 }
 
-void send_SET(int fd){
+void send_SET(){
     write(fd, set, CONTROL_FRAME_SIZE);
     printf("SET sent to receiver \n");
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
 }
 
-void receive_UA(int fd){
+int receive_UA(){
     //small buffer for reading from serial port
     unsigned char buf[2];
 
@@ -59,9 +57,62 @@ void receive_UA(int fd){
                 default:
                     break;
             }
+        }
+        else{
+            return FALSE;
         } 
     }
+    return TRUE;
 }
+
+
+// Alarm function handler
+void connectionAttempt(int signal)
+{
+    alarmEnabled = FALSE;
+    alarmCount++;
+
+    send_SET();
+
+    // Wait until all bytes have been written to the serial port
+    // TODO : Keep or remove ? 
+    sleep(1);
+
+    if(receive_UA() == TRUE){
+        ua_received = TRUE;
+    }
+    else{
+        printf("Connection Failed, retrying in %d seconds (%d/%d)\n",timeout_value,alarmCount,attempts);
+    }
+}
+
+
+void llopen_write(){
+    // Set alarm function handler
+    (void)signal(SIGALRM, connectionAttempt);
+
+    while (alarmCount < 3 && ua_received == FALSE)
+    {
+        if (alarmEnabled == FALSE)
+        {
+            alarm(timeout_value); // Set alarm to be triggered in 3s
+            alarmEnabled = TRUE;
+        }
+    }
+
+    if(ua_received == TRUE){
+        printf("Established connection with reader\n");
+        alarmEnabled = FALSE;
+        alarmCount = 0;
+    }
+    else{
+        printf("Could not establish connection with reader, closing application\n");
+        exit(-1);
+    }
+}
+
+
+
 
 int main(int argc, char *argv[])
 {
@@ -80,7 +131,7 @@ int main(int argc, char *argv[])
 
     // Open serial port device for reading and writing, and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
-    int fd = open(serialPortName, O_RDWR | O_NOCTTY);
+    fd = open(serialPortName, O_RDWR | O_NOCTTY);
 
     if (fd < 0)
     {
@@ -108,7 +159,7 @@ int main(int argc, char *argv[])
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -131,11 +182,7 @@ int main(int argc, char *argv[])
 
     //Serial port settings over
 
-    send_SET(fd);
-
-    receive_UA(fd);
-
-    printf("Established Connection with reader\n");
+    llopen_write();
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)

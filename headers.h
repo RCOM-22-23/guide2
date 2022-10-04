@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
+#include <signal.h>
 
 //<----------SERIAL PORT CONFIG---------->
 
@@ -67,6 +68,20 @@ unsigned char set[CONTROL_FRAME_SIZE] = {F,A_W,SET,BCC1_SET,F};
 
 //UA format
 unsigned char ua[CONTROL_FRAME_SIZE] = {F,A_R,UA,BCC1_UA,F};
+
+//global serial port descriptor
+int fd;
+
+//Alarm and timeout variables
+int alarmEnabled = FALSE;
+int alarmCount = 0;
+int ua_received = FALSE;
+
+//Change this value for the time waited between each attempt
+int timeout_value = 3;
+
+//number of attempts
+int attempts = 3;
 
 
 //<----------GLOBAL VARIABLES END---------->
